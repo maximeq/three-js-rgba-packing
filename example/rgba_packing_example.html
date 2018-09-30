@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - simple global illumination</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				margin: 0px;
+				background-color: #000000;
+				overflow: hidden;
+			}
+
+			a {
+				color: #0078ff;
+			}
+
+			#info {
+				position: absolute;
+				top: 5px;
+				width: 100%;
+				color:#fff;
+				font-family:Monospace;
+				font-size:13px;
+				font-weight: bold;
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="info">
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - simple global illumination (<a href="http://www.iquilezles.org/www/articles/simplegi/simplegi.htm">article</a>)
+		</div>
+
+		<script src="./lib/three.js"></script>
+        <script src="../src/RGBAPacking.js"></script>
+
+		<script>
+
+            var rgba = new Float32Array([0,0,0,0]);
+            var f32 = new Float32Array([0]);
+            var f32dec = new Float32Array([0]);
+
+            // Test on javascript side
+            for(var i=0; i<10; ++i){
+                f32[0] = Math.min(Math.random(),1-1e-7);
+                RGBAPacking.encodeUnitFloat32(f32[0], rgba);
+                f32dec[0] = RGBAPacking.decodeUnitFloat32(rgba);
+                if( f32[0] - f32dec[0] !== 0){
+                    console.log("ERRROR : RGBAPacking.EncodeFloat32 and (RGBAPacking.DecodeFloat32 fail on number " + f32[0] + " Difference i " + (f32[0] - f32dec[0]));
+                }
+            }
+
+            // Test on GPU
+            var wh = 32;
+            var size = wh * wh;
+            var f32_data = new Float32Array(size);
+            var data = new Uint8Array( 4 * size );
+
+            var rgba = new Float32Array([0,0,0,0]);
+            for ( var i = 0; i < size; i ++ ) {
+                f32_data[i] = 1.0-1.e-7; //Math.random();
+                RGBAPacking.encodeUnitFloat32(f32_data[i], rgba);
+
+                data[ 4*i ] = Math.round(rgba[0]*255);
+                data[ 4*i + 1 ] = Math.round(rgba[1]*255);
+                data[ 4*i + 2 ] = Math.round(rgba[2]*255);
+                data[ 4*i + 3 ] = Math.round(rgba[3]*255);
+            }
+
+            // used the buffer to create a DataTexture
+            var texture = new THREE.DataTexture( data, wh, wh, THREE.RGBAFormat );
+            texture.needsUpdate = true;
+
+            var rt = new THREE.WebGLRenderTarget( wh, wh, {
+                wrapS: THREE.RepeatWrapping,
+                wrapT: THREE.RepeatWrapping,
+                minFilter: THREE.NearestFilter,
+                magFilter: THREE.NearestFilter,
+                depthBuffer: true,
+                format: THREE.RGBAFormat
+            });
+            var scene = new THREE.Scene();
+            var mesh = new THREE.Mesh(
+                new THREE.PlaneBufferGeometry(wh,wh,1,1),
+                new THREE.ShaderMaterial(
+                    {
+                        uniforms: {
+                            uTexture : {
+                                type : 't',
+                                value: texture
+                            }
+                        },
+                        vertexShader:   [
+                            "varying vec2 vUv;",
+                            "void main ()",
+                            "{",
+                            "   vUv = uv;",
+                            "   gl_Position = projectionMatrix * modelViewMatrix  * vec4(position,1.);",
+                            "}"
+                        ].join("\n"),
+                        fragmentShader: [
+                            "varying vec2 vUv;",
+                            "uniform sampler2D uTexture;",
+                            RGBAPacking.glslEncodeUnitFloat32,
+                            RGBAPacking.glslDecodeUnitFloat32,
+                            "void main ()",
+                            "{",
+                            "  vec4 texel = texture2D(uTexture, vec2(vUv.x, vUv.y));",
+                            "  float f = decodeUnitFloat32(texel);",
+                            "  vec4 finalColor = encodeUnitFloat32(f);",
+                            "  gl_FragColor = finalColor;",
+
+                            "}"
+                        ].join("\n")
+                    }
+                )
+            );
+            var cam = new THREE.OrthographicCamera(-wh/2,wh/2,wh/2,-wh/2,-1000,1000);
+            var buffer = new Uint8Array( wh*wh*4 );
+
+            scene.updateMatrixWorld( true );
+            scene.add(mesh);
+
+            var renderer = new THREE.WebGLRenderer({alpha:true, antialias:false});
+
+            renderer.setRenderTarget(rt);
+            renderer.setClearColor( new THREE.Color(1,1,1), 0.0);
+            renderer.clear();
+            renderer.render( scene, cam, rt );
+            renderer.readRenderTargetPixels( rt, 0, 0, wh, wh, buffer );
+
+            // Test the difference between values sent
+            var diff = 0;
+            for(var i=0; i<size; ++i){
+                rgba[0] = buffer[4*i]/255;
+                rgba[1] = buffer[4*i+1]/255;
+                rgba[2] = buffer[4*i+2]/255;
+                rgba[3] = buffer[4*i+3]/255;
+
+                f32dec[0] = RGBAPacking.decodeUnitFloat32(rgba);
+                if(Math.abs(f32dec[0] - f32_data[i]) > 1e-6){
+                    diff++;
+                }
+            }
+
+            console.log("Difference is : "+diff);
+
+		</script>
+
+	</body>
+</html>
