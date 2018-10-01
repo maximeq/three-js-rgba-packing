@@ -5,21 +5,9 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
-			body {
-				margin: 0px;
-				background-color: #000000;
-				overflow: hidden;
-			}
-
-			a {
-				color: #0078ff;
-			}
-
 			#info {
-				position: absolute;
 				top: 5px;
 				width: 100%;
-				color:#fff;
 				font-family:Monospace;
 				font-size:13px;
 				font-weight: bold;
@@ -32,6 +20,12 @@
 		<div id="info">
 			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - Packing Numbers in RGBA Textures
 		</div>
+        <hr>
+        <div id="unit-float32-javascript-results">
+        </div>
+        <hr>
+        <div id="unit-float32-gpu-results">
+        </div>
 
 		<script src="./lib/three.js"></script>
         <script src="../src/RGBAPacking.js"></script>
@@ -42,18 +36,26 @@
             var f32 = new Float32Array([0]);
             var f32dec = new Float32Array([0]);
 
+            // Maximum difference found bewteen encode/decode
+            var max_diff = 0;
+
             // Test on javascript side
-            for(var i=0; i<10; ++i){
+            var n_js_tests = 1000;
+            for(var i=0; i<2048; ++i){
                 f32[0] = Math.min(Math.random(),1-1e-7);
                 RGBAPacking.encodeUnitFloat32(f32[0], rgba);
                 f32dec[0] = RGBAPacking.decodeUnitFloat32(rgba);
-                if( f32[0] - f32dec[0] !== 0){
-                    console.log("ERRROR : RGBAPacking.EncodeFloat32 and (RGBAPacking.DecodeFloat32 fail on number " + f32[0] + " Difference i " + (f32[0] - f32dec[0]));
+                var diff = f32[0] - f32dec[0];
+                if( diff !== 0){
+                    if(diff > max_diff){
+                        max_diff = diff;
+                    }
                 }
             }
+            document.getElementById('unit-float32-javascript-results').innerHTML = "Tested Javascript encodeUnitFloat32 / decodeUnitFloat32 on "+ n_js_tests + " numbers. Maximum found difference was : "+max_diff;
 
             // Test on GPU
-            var wh = 32;
+            var wh = 128;
             var size = wh * wh;
             var f32_data = new Float32Array(size);
             var data = new Uint8Array( 4 * size );
@@ -132,7 +134,7 @@
             renderer.readRenderTargetPixels( rt, 0, 0, wh, wh, buffer );
 
             // Test the difference between values sent
-            var diff = 0;
+            max_diff = 0;
             for(var i=0; i<size; ++i){
                 rgba[0] = buffer[4*i]/255;
                 rgba[1] = buffer[4*i+1]/255;
@@ -140,12 +142,13 @@
                 rgba[3] = buffer[4*i+3]/255;
 
                 f32dec[0] = RGBAPacking.decodeUnitFloat32(rgba);
-                if(Math.abs(f32dec[0] - f32_data[i]) > 1e-6){
-                    diff++;
+                var diff = Math.abs(f32dec[0] - f32_data[i]);
+                if(diff > max_diff){
+                    max_diff = diff;
                 }
             }
 
-            console.log("Difference is : "+diff);
+             document.getElementById('unit-float32-gpu-results').innerHTML = "Tested GLSL encodeUnitFloat32 / decodeUnitFloat32 on "+ (wh*wh) + " numbers. Maximum found difference was : "+max_diff;
 
 		</script>
 
