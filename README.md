@@ -1,9 +1,7 @@
 three-js-rgba-packing
 ================
 
-[![License][license-badge]][license-badge-url]
-
-**Examples work with Three r0.96.0 !!!**
+**Examples work with Three r0.96.0**
 
 ## RGBA Packing ##
 
