@@ -11,6 +11,9 @@ Functions to pack and unpack native float and integer types in RGBA textures, an
 Main functions in Javascript and GLSL.
 Comes with an HTML test page using THREE.JS, to be easily included in your THREE.JS code.
 
+Taken and adapted from :
+https://stackoverflow.com/questions/18453302/how-do-you-pack-one-32bit-int-into-4-8bit-ints-in-glsl-webgl
+
 ### Unit Float32 to RGBA Packing ###
 
 For now this code only provides functions for float32 in range [0;1[
