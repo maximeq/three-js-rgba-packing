@@ -14,6 +14,7 @@
     var RGBAPacking = function(){
 
         return {
+            version:"1.0.0",
             encodeUInt32:function(i, rgba){
                 throw "Not implemented yet.";
             },
