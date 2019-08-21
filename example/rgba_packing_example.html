@@ -23,9 +23,15 @@
         <hr>
         <div id="unit-float32-javascript-results">
         </div>
-        <hr>
-        <div id="unit-float32-gpu-results">
-        </div>
+		<hr>
+		<div id="unit-float32-gpu-results">
+		</div>
+		<hr>
+		<div id="uint32-javascript-results">
+		</div>
+		<hr>
+		<div id="uint32-gpu-results">
+		</div>
 
         <script src="../node_modules/three-full/builds/Three.iife.js"></script>
         <script>
@@ -36,20 +42,20 @@
 
 		<script>
 
-            var rgba = new Float32Array([0,0,0,0]);
-            var f32 = new Float32Array([0]);
-            var f32dec = new Float32Array([0]);
+            let rgba = new Float32Array([0,0,0,0]);
+            let f32 = new Float32Array([0]);
+            let f32dec = new Float32Array([0]);
 
             // Maximum difference found bewteen encode/decode
-            var max_diff = 0;
+            let max_diff = 0;
 
             // Test on javascript side
-            var n_js_tests = 1000;
-            for(var i=0; i<2048; ++i){
+            let n_js_tests = 1000;
+            for(let i=0; i<2048; ++i){
                 f32[0] = Math.min(Math.random(),1-1e-7);
                 THREERGBAPacking.encodeUnitFloat32(f32[0], rgba);
                 f32dec[0] = THREERGBAPacking.decodeUnitFloat32(rgba);
-                var diff = f32[0] - f32dec[0];
+                let diff = f32[0] - f32dec[0];
                 if( diff !== 0){
                     if(diff > max_diff){
                         max_diff = diff;
@@ -59,13 +65,13 @@
             document.getElementById('unit-float32-javascript-results').innerHTML = "Tested Javascript encodeUnitFloat32 / decodeUnitFloat32 on "+ n_js_tests + " numbers. Maximum found difference was : "+max_diff;
 
             // Test on GPU
-            var wh = 128;
-            var size = wh * wh;
-            var f32_data = new Float32Array(size);
-            var data = new Uint8Array( 4 * size );
+            let wh = 128;
+            let size = wh * wh;
+            let f32_data = new Float32Array(size);
+            let data = new Uint8Array( 4 * size );
 
-            var rgba = new Float32Array([0,0,0,0]);
-            for ( var i = 0; i < size; i ++ ) {
+            rgba = new Float32Array([0,0,0,0]);
+            for ( let i = 0; i < size; i ++ ) {
                 f32_data[i] = Math.random();
                 THREERGBAPacking.encodeUnitFloat32(f32_data[i], rgba);
 
@@ -76,10 +82,10 @@
             }
 
             // used the buffer to create a DataTexture
-            var texture = new THREE.DataTexture( data, wh, wh, THREE.RGBAFormat );
+            let texture = new THREE.DataTexture( data, wh, wh, THREE.RGBAFormat );
             texture.needsUpdate = true;
 
-            var rt = new THREE.WebGLRenderTarget( wh, wh, {
+            let rt = new THREE.WebGLRenderTarget( wh, wh, {
                 wrapS: THREE.RepeatWrapping,
                 wrapT: THREE.RepeatWrapping,
                 minFilter: THREE.NearestFilter,
@@ -87,8 +93,8 @@
                 depthBuffer: true,
                 format: THREE.RGBAFormat
             });
-            var scene = new THREE.Scene();
-            var mesh = new THREE.Mesh(
+            let scene = new THREE.Scene();
+            let mesh = new THREE.Mesh(
                 new THREE.PlaneBufferGeometry(wh,wh,1,1),
                 new THREE.ShaderMaterial(
                     {
@@ -123,13 +129,13 @@
                     }
                 )
             );
-            var cam = new THREE.OrthographicCamera(-wh/2,wh/2,wh/2,-wh/2,-1000,1000);
-            var buffer = new Uint8Array( wh*wh*4 );
+            let cam = new THREE.OrthographicCamera(-wh/2,wh/2,wh/2,-wh/2,-1000,1000);
+            let buffer = new Uint8Array( wh*wh*4 );
 
             scene.updateMatrixWorld( true );
             scene.add(mesh);
 
-            var renderer = new THREE.WebGLRenderer({alpha:true, antialias:false});
+            let renderer = new THREE.WebGLRenderer({alpha:true, antialias:false});
 
             renderer.setRenderTarget(rt);
             renderer.setClearColor( new THREE.Color(1,1,1), 0.0);
@@ -139,20 +145,149 @@
 
             // Test the difference between values sent
             max_diff = 0;
-            for(var i=0; i<size; ++i){
+            for(let i=0; i<size; ++i){
                 rgba[0] = buffer[4*i]/255;
                 rgba[1] = buffer[4*i+1]/255;
                 rgba[2] = buffer[4*i+2]/255;
                 rgba[3] = buffer[4*i+3]/255;
 
                 f32dec[0] = THREERGBAPacking.decodeUnitFloat32(rgba);
-                var diff = Math.abs(f32dec[0] - f32_data[i]);
+                let diff = Math.abs(f32dec[0] - f32_data[i]);
                 if(diff > max_diff){
                     max_diff = diff;
                 }
             }
 
              document.getElementById('unit-float32-gpu-results').innerHTML = "Tested GLSL encodeUnitFloat32 / decodeUnitFloat32 on "+ (wh*wh) + " numbers. Maximum found difference was : "+max_diff;
+
+		</script>
+
+		<script>
+			rgba = new Float32Array([0, 0, 0, 0]);
+			let ui32 = new Uint32Array([0]);
+			let ui32dec= new Uint32Array([0]);
+
+			function randomUint32() {
+				if (window && window.crypto && window.crypto.getRandomValues && Uint32Array) {
+					var o = new Uint32Array(1);
+					window.crypto.getRandomValues(o);
+					return o[0];
+				} else {
+					console.warn('Falling back to pseudo-random client seed');
+					return Math.floor(Math.random() * Math.pow(2, 32));
+				}
+			}
+
+			n_js_tests = 1000;
+			max_diff = 0;
+			for (let i = 0; i < n_js_tests; ++i){
+				ui32[0] = randomUint32();
+				THREERGBAPacking.encodeUInt32(ui32[0], rgba);
+				ui32dec[0] = THREERGBAPacking.decodeUInt32(rgba);
+				let diff = ui32[0] - ui32dec[0];
+				if( diff !== 0){
+					if(diff > max_diff){
+						max_diff = diff;
+					}
+				}
+			}
+			document.getElementById('uint32-javascript-results').innerHTML = "Tested Javascript encodeUint32 / decodeUint32 on "+ n_js_tests + " numbers. Maximum found difference was : "+max_diff;
+
+			// Test on GPU
+			wh = 512;
+			size = wh * wh;
+			let uint32_data = new Uint32Array(size);
+			data = new Uint8Array( 4 * size );
+
+			rgba = new Float32Array([0,0,0,0]);
+			for ( let i = 0; i < size; i ++ ) {
+				uint32_data[i] = randomUint32() % (1 << 31);
+				THREERGBAPacking.encodeUInt32(uint32_data[i], rgba);
+
+				data[ 4*i ] = Math.round(rgba[0]*255);
+				data[ 4*i + 1 ] = Math.round(rgba[1]*255);
+				data[ 4*i + 2 ] = Math.round(rgba[2]*255);
+				data[ 4*i + 3 ] = Math.round(rgba[3]*255);
+			}
+
+			// used the buffer to create a DataTexture
+			texture = new THREE.DataTexture( data, wh, wh, THREE.RGBAFormat );
+			texture.needsUpdate = true;
+
+			rt = new THREE.WebGLRenderTarget( wh, wh, {
+				wrapS: THREE.RepeatWrapping,
+				wrapT: THREE.RepeatWrapping,
+				minFilter: THREE.NearestFilter,
+				magFilter: THREE.NearestFilter,
+				depthBuffer: true,
+				format: THREE.RGBAFormat
+			});
+			scene = new THREE.Scene();
+			mesh = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry(wh,wh,1,1),
+					new THREE.ShaderMaterial(
+							{
+								uniforms: {
+									uTexture : {
+										type : 't',
+										value: texture
+									}
+								},
+								vertexShader:   [
+									"varying vec2 vUv;",
+									"void main ()",
+									"{",
+									"   vUv = uv;",
+									"   gl_Position = projectionMatrix * modelViewMatrix  * vec4(position,1.);",
+									"}"
+								].join("\n"),
+								fragmentShader: [
+									"varying vec2 vUv;",
+									"uniform sampler2D uTexture;",
+									THREERGBAPacking.glslEncodeUInt32,
+									THREERGBAPacking.glslDecodeUInt32,
+									"void main ()",
+									"{",
+									"  vec4 texel = texture2D(uTexture, vec2(vUv.x, vUv.y));",
+									"  int f = decodeUInt32(texel);",
+									"  vec4 finalColor = encodeUInt32(f);",
+									"  gl_FragColor = finalColor;",
+									"}"
+								].join("\n")
+							}
+					)
+			);
+			cam = new THREE.OrthographicCamera(-wh/2,wh/2,wh/2,-wh/2,-1000,1000);
+			buffer = new Uint8Array( wh*wh*4 );
+
+			scene.updateMatrixWorld( true );
+			scene.add(mesh);
+
+			renderer.setRenderTarget(rt);
+			renderer.setClearColor( new THREE.Color(1,1,1), 0.0);
+			renderer.clear();
+			renderer.render( scene, cam, rt );
+			renderer.readRenderTargetPixels( rt, 0, 0, wh, wh, buffer );
+
+			// Test the difference between values sent
+			max_diff = 0;
+			let diff_index = 0, diff_value;
+			for(let i=0; i<size; ++i){
+				rgba[0] = buffer[4*i]/255;
+				rgba[1] = buffer[4*i+1]/255;
+				rgba[2] = buffer[4*i+2]/255;
+				rgba[3] = buffer[4*i+3]/255;
+
+				ui32dec[0] = THREERGBAPacking.decodeUInt32(rgba);
+				let diff = Math.abs(ui32dec[0] - uint32_data[i]);
+				if(diff > max_diff){
+					max_diff = diff;
+					diff_value = ui32dec[0];
+					diff_index = i;
+				}
+			}
+
+			document.getElementById('uint32-gpu-results').innerHTML = "Tested GLSL encodeUint32 / decodeUint32 on "+ (wh*wh) + " numbers. Maximum found difference was : "+max_diff + " (" + uint32_data[diff_index]+ " and " + diff_value + ")";
 
 		</script>
 

@@ -13,21 +13,29 @@
     // Taken and adapted from :
     // https://stackoverflow.com/questions/18453302/how-do-you-pack-one-32bit-int-into-4-8bit-ints-in-glsl-webgl
     //
-    // TODO : Packing functions for Uint32
-    //        Help : https://stackoverflow.com/questions/31276114/three-js-large-array-of-int-as-uniform
 
     var RGBAPacking = {
         encodeUInt32:function(i, rgba){
-            throw "Not implemented yet.";
+            rgba = rgba || new Float32Array(4);
+            i = new Uint32Array([i]);
+            rgba[0] = (Math.trunc(i) % 256) / 255.;
+            rgba[1] = (Math.trunc(i / 256) % 256) / 255.;
+            rgba[2] = (Math.trunc(i / 256 / 256) % 256) / 255.;
+            rgba[3] = (Math.trunc(i / 256 / 256 / 256) % 256) / 255.;
+
+            return rgba;
         },
         decodeUInt32:function(rgba){
-            throw "Not implemented yet.";
+            return Math.round(rgba[0] * 255) +
+                   Math.round(rgba[1] * 255) * 256 +
+                   Math.round(rgba[2] * 255) * 256 * 256 +
+                   Math.round(rgba[3] * 255) * 256 * 256 * 256;
         },
         // Encode Float32 values in range [0;1[, Note that 1 is excluded.
         // The closest to 1.0 value you can encode is 1-1e-7.
         // When needed, a workaround consist in saving values in [0;0.5], which looses only 1 bit precision
         encodeUnitFloat32:function(f, rgba){
-            var rgba = rgba ? rgba : new Float32Array([0,0,0,0]);
+            rgba = rgba ? rgba : new Float32Array([0,0,0,0]);
             rgba[0] = f*1.0;
             rgba[1] = f*255.0;
             rgba[2] = f*65025.0;
@@ -59,6 +67,23 @@
             "    return dot(rgba, vec4(1.,1./255.,1./65025.,1./16581375.));",
             "}"
         ].join("\n"),
+
+        // TODO : for some reason, this approach gives imprecise results past 24 bits (past Oxffffff), find out why
+        glslEncodeUInt32: [
+            "vec4 encodeUInt32(int value) {",
+            "   vec4 encodeFactors = 1.0 / 256. / vec4(1., 256., 65536., 16777216.);",
+            "   vec4 rgba = fract(float(value) * encodeFactors);",
+            "   rgba.yzw -= rgba.xyz / 256.;",
+            "   return rgba * 256. / 255.;",
+            "}"
+        ].join('\n'),
+        glslDecodeUInt32: [
+            "int decodeUInt32(vec4 value) {",
+            "   ivec4 decodeFactors = ivec4(1, 256, 65536, 16777216);",
+            "   ivec4 v = ivec4(255. * value);",
+            "   return decodeFactors.x * v.x + decodeFactors.y * v.y + decodeFactors.z * v.z  + decodeFactors.w * v.w;",
+            "}"
+        ].join('\n')
     };
 
     threeFull.RGBAPacking = RGBAPacking;
