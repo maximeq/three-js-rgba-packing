@@ -1,6 +1,6 @@
 {
   "name": "three-js-rgba-packing",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "GLSL and javascript methods to pack numbers into RGBA values, on CPU and GPU, and read them back on CPU or GPU.",
   "main": "src/RGBAPacking.js",
   "scripts": {
