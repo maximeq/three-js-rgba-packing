@@ -27,8 +27,12 @@
         <div id="unit-float32-gpu-results">
         </div>
 
-		<script src="./lib/three.js"></script>
-        <script src="../src/RGBAPacking.js"></script>
+        <script src="../node_modules/three-full/builds/Three.iife.js"></script>
+        <script>
+            // Alias to use Three-full as Three
+            var THREE = THREE || Three;
+        </script>
+        <script src="../dist/browser/three-js-rgba-packing.js"></script>
 
 		<script>
 
@@ -43,8 +47,8 @@
             var n_js_tests = 1000;
             for(var i=0; i<2048; ++i){
                 f32[0] = Math.min(Math.random(),1-1e-7);
-                RGBAPacking.encodeUnitFloat32(f32[0], rgba);
-                f32dec[0] = RGBAPacking.decodeUnitFloat32(rgba);
+                THREERGBAPacking.encodeUnitFloat32(f32[0], rgba);
+                f32dec[0] = THREERGBAPacking.decodeUnitFloat32(rgba);
                 var diff = f32[0] - f32dec[0];
                 if( diff !== 0){
                     if(diff > max_diff){
@@ -63,7 +67,7 @@
             var rgba = new Float32Array([0,0,0,0]);
             for ( var i = 0; i < size; i ++ ) {
                 f32_data[i] = Math.random();
-                RGBAPacking.encodeUnitFloat32(f32_data[i], rgba);
+                THREERGBAPacking.encodeUnitFloat32(f32_data[i], rgba);
 
                 data[ 4*i ] = Math.round(rgba[0]*255);
                 data[ 4*i + 1 ] = Math.round(rgba[1]*255);
@@ -105,8 +109,8 @@
                         fragmentShader: [
                             "varying vec2 vUv;",
                             "uniform sampler2D uTexture;",
-                            RGBAPacking.glslEncodeUnitFloat32,
-                            RGBAPacking.glslDecodeUnitFloat32,
+                            THREERGBAPacking.glslEncodeUnitFloat32,
+                            THREERGBAPacking.glslDecodeUnitFloat32,
                             "void main ()",
                             "{",
                             "  vec4 texel = texture2D(uTexture, vec2(vUv.x, vUv.y));",
@@ -141,7 +145,7 @@
                 rgba[2] = buffer[4*i+2]/255;
                 rgba[3] = buffer[4*i+3]/255;
 
-                f32dec[0] = RGBAPacking.decodeUnitFloat32(rgba);
+                f32dec[0] = THREERGBAPacking.decodeUnitFloat32(rgba);
                 var diff = Math.abs(f32dec[0] - f32_data[i]);
                 if(diff > max_diff){
                     max_diff = diff;
