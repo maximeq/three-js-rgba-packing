@@ -32,6 +32,12 @@
 		<hr>
 		<div id="uint32-gpu-results">
 		</div>
+		<hr>
+		<div id="uint16-javascript-results">
+		</div>
+		<hr>
+		<div id="uint16-gpu-results">
+		</div>
 
         <script src="../node_modules/three-full/builds/Three.iife.js"></script>
         <script>
@@ -194,7 +200,7 @@
 			document.getElementById('uint32-javascript-results').innerHTML = "Tested Javascript encodeUint32 / decodeUint32 on "+ n_js_tests + " numbers. Maximum found difference was : "+max_diff;
 
 			// Test on GPU
-			wh = 512;
+			wh = 128;
 			size = wh * wh;
 			let uint32_data = new Uint32Array(size);
 			data = new Uint8Array( 4 * size );
@@ -287,7 +293,133 @@
 				}
 			}
 
-			document.getElementById('uint32-gpu-results').innerHTML = "Tested GLSL encodeUint32 / decodeUint32 on "+ (wh*wh) + " numbers. Maximum found difference was : "+max_diff + " (" + uint32_data[diff_index]+ " and " + diff_value + ")";
+			document.getElementById('uint32-gpu-results').innerHTML = "Tested GLSL encodeUint32 / decodeUint32 on "+ (wh*wh) + " numbers. Maximum found difference was : "+max_diff + (max_diff === 0 ? "" : " (" + uint32_data[diff_index]+ " and " + diff_value + ")");
+
+		</script>
+
+
+		<script>
+			let rg = new Float32Array([0, 0]);
+			let ui16 = new Uint16Array([0]);
+			let ui16dec= new Uint16Array([0]);
+
+			function randomUint16() {
+				if (window && window.crypto && window.crypto.getRandomValues && Uint16Array) {
+					var o = new Uint16Array(1);
+					window.crypto.getRandomValues(o);
+					return o[0];
+				} else {
+					console.warn('Falling back to pseudo-random client seed');
+					return Math.floor(Math.random() * Math.pow(2, 16));
+				}
+			}
+
+			n_js_tests = 1000;
+			max_diff = 0;
+			for (let i = 0; i < n_js_tests; ++i){
+				ui16[0] = randomUint16() % 65536;
+				THREERGBAPacking.encodeUInt16(ui16[0], rg);
+				ui16dec[0] = THREERGBAPacking.decodeUInt16(rg);
+				let diff = ui16[0] - ui16dec[0];
+				if( diff !== 0){
+					if(diff > max_diff){
+						max_diff = diff;
+					}
+				}
+			}
+			document.getElementById('uint16-javascript-results').innerHTML = "Tested Javascript encodeUint16 / decodeUint16 on "+ n_js_tests + " numbers. Maximum found difference was : "+max_diff;
+
+			// Test on GPU
+			wh = 64;
+			size = wh * wh;
+			let uint16_data = new Uint16Array(size);
+			data = new Uint8Array( 4 * size );
+
+			rg = new Float32Array([0,0]);
+			for ( let i = 0; i < size; i ++ ) {
+				uint16_data[i] = randomUint16() % 65536;
+				THREERGBAPacking.encodeUInt16(uint16_data[i], rg);
+
+				data[ 4*i ] = Math.round(rg[0]*255);
+				data[ 4*i + 1 ] = Math.round(rg[1]*255);
+			}
+
+			// used the buffer to create a DataTexture
+			texture = new THREE.DataTexture( data, wh, wh, THREE.RGBAFormat );
+			texture.needsUpdate = true;
+
+			rt = new THREE.WebGLRenderTarget( wh, wh, {
+				wrapS: THREE.RepeatWrapping,
+				wrapT: THREE.RepeatWrapping,
+				minFilter: THREE.NearestFilter,
+				magFilter: THREE.NearestFilter,
+				depthBuffer: true,
+				format: THREE.RGBAFormat
+			});
+			scene = new THREE.Scene();
+			mesh = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry(wh,wh,1,1),
+					new THREE.ShaderMaterial(
+							{
+								uniforms: {
+									uTexture : {
+										type : 't',
+										value: texture
+									}
+								},
+								vertexShader:   [
+									"varying vec2 vUv;",
+									"void main ()",
+									"{",
+									"   vUv = uv;",
+									"   gl_Position = projectionMatrix * modelViewMatrix  * vec4(position,1.);",
+									"}"
+								].join("\n"),
+								fragmentShader: [
+									"varying vec2 vUv;",
+									"uniform sampler2D uTexture;",
+									THREERGBAPacking.glslEncodeUInt16,
+									THREERGBAPacking.glslDecodeUInt16,
+									"void main ()",
+									"{",
+									"  vec2 texel = texture2D(uTexture, vec2(vUv.x, vUv.y)).rg;",
+									"  int f = decodeUInt16(texel);",
+									"  vec2 finalColor = encodeUInt16(f);",
+									"  gl_FragColor = vec4(finalColor, 0., 0.);",
+									"}"
+								].join("\n")
+							}
+					)
+			);
+			cam = new THREE.OrthographicCamera(-wh/2,wh/2,wh/2,-wh/2,-1000,1000);
+			buffer = new Uint8Array( wh*wh*4 );
+
+			scene.updateMatrixWorld( true );
+			scene.add(mesh);
+
+			renderer.setRenderTarget(rt);
+			renderer.setClearColor( new THREE.Color(1,1,1), 0.0);
+			renderer.clear();
+			renderer.render( scene, cam, rt );
+			renderer.readRenderTargetPixels( rt, 0, 0, wh, wh, buffer );
+
+			// Test the difference between values sent
+			max_diff = 0;
+			diff_index = 0; diff_value;
+			for(let i=0; i<size; ++i){
+				rg[0] = buffer[4*i]/255;
+				rg[1] = buffer[4*i+1]/255;
+
+				ui16dec[0] = THREERGBAPacking.decodeUInt16(rg);
+				let diff = Math.abs(ui16dec[0] - uint16_data[i]);
+				if(diff > max_diff){
+					max_diff = diff;
+					diff_value = ui16dec[0];
+					diff_index = i;
+				}
+			}
+
+			document.getElementById('uint16-gpu-results').innerHTML = "Tested GLSL encodeUint16 / decodeUint16 on "+ (wh*wh) + " numbers. Maximum found difference was : "+max_diff + (max_diff === 0 ? "" : " (" + uint16_data[diff_index]+ " and " + diff_value + ")");
 
 		</script>
 

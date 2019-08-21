@@ -12,7 +12,6 @@ var THREE = require("three-full");
 var RGBAPacking = {
     encodeUInt32:function(i, rgba){
         rgba = rgba || new Float32Array(4);
-        i = new Uint32Array([i]);
         rgba[0] = (Math.trunc(i) % 256) / 255.;
         rgba[1] = (Math.trunc(i / 256) % 256) / 255.;
         rgba[2] = (Math.trunc(i / 256 / 256) % 256) / 255.;
@@ -25,6 +24,15 @@ var RGBAPacking = {
                Math.round(rgba[1] * 255) * 256 +
                Math.round(rgba[2] * 255) * 256 * 256 +
                Math.round(rgba[3] * 255) * 256 * 256 * 256;
+    },
+    encodeUInt16: function (i, rg) {
+        rg = rg || new Float32Array(2);
+        rg[0] = (Math.trunc(i) % 256) / 255.;
+        rg[1] = (Math.trunc(i / 256) % 256) / 255.;
+        return rg;
+    },
+    decodeUInt16: function (rg) {
+        return Math.round(rg[0] * 255) + Math.round(rg[1] * 255) * 256;
     },
     // Encode Float32 values in range [0;1[, Note that 1 is excluded.
     // The closest to 1.0 value you can encode is 1-1e-7.
@@ -78,7 +86,22 @@ var RGBAPacking = {
         "   ivec4 v = ivec4(255. * value);",
         "   return decodeFactors.x * v.x + decodeFactors.y * v.y + decodeFactors.z * v.z  + decodeFactors.w * v.w;",
         "}"
-    ].join('\n')
+    ].join('\n'),
+
+    glslEncodeUInt16: [
+        "vec2 encodeUInt16(int value) {",
+        "    vec2 encodeVec = vec2(1.0 / 256., 1.0 / 65536.);" +
+        "    vec2 result = fract(float(value) * encodeVec);",
+        "    result.y -= result.x / 256.;",
+        "    return 256. * result / 255.;",
+        "}"
+    ].join('\n'),
+    glslDecodeUInt16: [
+        "int decodeUInt16(vec2 value) {",
+        "   vec2 decodeVec = vec2(255., 256. * 255.);",
+        "   return int(dot(value, decodeVec));",
+        "}"
+    ].join('\n'),
 };
 
 THREE.RGBAPacking = RGBAPacking;
